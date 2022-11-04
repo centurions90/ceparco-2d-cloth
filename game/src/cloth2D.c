@@ -22,7 +22,6 @@ typedef struct cloth {
 static const int screenWidth = 1280;
 static const int screenHeight = 720;
 static Cloth cloth;
-static Vector2** temp;
 static float spacing;
 
 //----------------------------------------------------------------------------------
@@ -57,19 +56,13 @@ int main(int argc, char* argv[])
     if (argc >= 3) {
         k = atof(argv[2]);
     } else {
-        k = 0.5;
+        k = 0.1;
     }
 
     if (argc >= 4) {
         c = atof(argv[3]);
     } else {
-        c = 0.1;
-    }
-
-    temp = (Vector2**)malloc(N * sizeof(Vector2*));
-
-    for (int i = 0; i < N; i++) {
-        temp[i] = (Vector2*)malloc(N * sizeof(Vector2));
+        c = 0.01;
     }
 
     CreateCloth(N, k, c);
@@ -88,12 +81,10 @@ int main(int argc, char* argv[])
     //--------------------------------------------------------------------------------------
     free(cloth.pinned);
     for (int i = 0; i < N; i++) {
-        free(temp[i]);
         free(cloth.positions[i]);
         free(cloth.lastPositions[i]);
     }
 
-    free(temp);
     free(cloth.positions);
     free(cloth.lastPositions);
 
@@ -183,21 +174,15 @@ static void CreateCloth(int N, float k, float c) {
 static void UpdateCloth() {
     for (int i = 0; i < cloth.N; i++) {
         for (int j = 0; j < cloth.N; j++) {
-            temp[i][j] = cloth.lastPositions[i][j];
-        }
-    }
-
-    for (int i = 0; i < cloth.N; i++) {
-        for (int j = 0; j < cloth.N; j++) {
             if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
-                cloth.lastPositions[i][j] = cloth.positions[i][j];
                 Vector2 force;
+                Vector2 spring = {0, 0};
 
                 // Velocity
-                force = Vector2Subtract(cloth.positions[i][j], temp[i][j]);
+                force = Vector2Subtract(cloth.positions[i][j], cloth.lastPositions[i][j]);
 
                 // Gravity
-                force = Vector2Add(force, (Vector2) {.x = 0, .y = 9.81 * GetFrameTime() * GetFrameTime()});
+                //force = Vector2Add(force, (Vector2) {.x = 0, .y = 9.81 * GetFrameTime()});
 
                 // Cloth
                 for (int y = -1; y <= 1; y++) {
@@ -208,20 +193,23 @@ static void UpdateCloth() {
                             i + y >= 0 &&
                             i + y < cloth.N
                         ) {
-                            if (abs(x) + abs(y) == 2) { // Diagonal Points
-                                Vector2 offset = Vector2Subtract(force, temp[i + y][j + x]);
+                            // Diagonal Points
+                            if (abs(x) + abs(y) == 2) {
+                                
+                            }
 
-                                force = Vector2Add(force, Vector2Subtract(Vector2Scale(offset, -cloth.k * 0.7071), Vector2Scale(offset, cloth.c * 0.7071)));
-                            } else if (abs(x) + abs(y) == 1) { // Horizontal/Vertical Points
-                                Vector2 offset = Vector2Subtract(cloth.positions[i][j], temp[i + y][j + x]);
-
-                                force = Vector2Add(force, Vector2Scale(Vector2Scale(offset, 1 / Vector2Length(offset)), cloth.k * (spacing - Vector2Length(offset))));
+                            // Horizontal/Vertical Points
+                            else if (abs(x) + abs(y) == 1) {
+                                
                             }
                         }
                     }
                 }
 
+                force = Vector2Add(force, spring);
+                //force = Vector2Scale(force, GetFrameTime() * GetFrameTime());
                 cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], force);
+                cloth.lastPositions[i][j] = cloth.positions[i][j];
             }
         }
     }
