@@ -21,6 +21,7 @@ static const int screenWidth = 1280;
 static const int screenHeight = 720;
 static Cloth cloth;
 static float spacing;
+static float drag;
 
 //----------------------------------------------------------------------------------
 // Local Functions Declaration
@@ -42,8 +43,6 @@ int main(int argc, char* argv[])
     SetTargetFPS(60);
 
     int N;
-    float k;
-    float c;
 
     if (argc >= 2) {
         N = atof(argv[1]);
@@ -52,15 +51,9 @@ int main(int argc, char* argv[])
     }
 
     if (argc >= 3) {
-        k = atof(argv[2]);
+        drag = atof(argv[2]);
     } else {
-        k = 0.1;
-    }
-
-    if (argc >= 4) {
-        c = atof(argv[3]);
-    } else {
-        c = 0.1;
+        drag = 0.01;
     }
 
     CreateCloth(N);
@@ -131,7 +124,7 @@ static void UpdateDrawFrame(void)
 }
 
 static void CreateCloth(int N) {
-    Vector2 center = {screenWidth / 2, screenHeight / 2};
+    Vector2 center = {screenWidth / 2, screenHeight / 2 - 100};
     Vector2 offset = {200, 200};
     spacing = ((1.0 / (N - 1) - 0.5) * 2) * offset.x - ((0 - 0.5) * 2) * offset.x;
 
@@ -171,13 +164,28 @@ static void UpdateCloth() {
     for (int i = 0; i < cloth.N; i++) {
         for (int j = 0; j < cloth.N; j++) {
             if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
+                Vector2 mousePos = GetMousePosition();
+                Vector2 mouseDelta = GetMouseDelta();
+
+                float distance = Vector2Distance(mousePos, cloth.positions[i][j]);
+
+                if (distance < 15) {
+                    cloth.lastPositions[i][j] = Vector2Subtract(cloth.positions[i][j], mouseDelta);
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < cloth.N; i++) {
+        for (int j = 0; j < cloth.N; j++) {
+            if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
                 Vector2 newPos;
 
                 // Velocity
-                newPos = Vector2Subtract(Vector2Scale(cloth.positions[i][j], 2), cloth.lastPositions[i][j]);
+                newPos = Vector2Add(cloth.positions[i][j], Vector2Scale(Vector2Subtract(cloth.positions[i][j], cloth.lastPositions[i][j]), 1.0 - drag));
 
                 // Gravity
-                newPos = Vector2Add(newPos, (Vector2) { .x = 0, .y = 981 * GetFrameTime() * GetFrameTime() });
+                newPos = Vector2Add(newPos, (Vector2) { .x = 0, .y = 981 * (1.0 - drag) * GetFrameTime() * GetFrameTime() });
 
                 cloth.lastPositions[i][j] = cloth.positions[i][j];
                 cloth.positions[i][j] = newPos;
