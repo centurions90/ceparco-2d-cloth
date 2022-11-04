@@ -167,7 +167,7 @@ static void CreateCloth(int N, float k, float c) {
         }
     }
 
-    cloth.lastPositions = (Vector2**)malloc(sizeof(cloth.positions));
+    cloth.lastPositions = (Vector2**)malloc(N * sizeof(Vector2*));
     for (int i = 0; i < N; i++) {
         cloth.lastPositions[i] = (Vector2*)malloc(N * sizeof(Vector2));
 
@@ -194,7 +194,7 @@ static void UpdateCloth() {
                 Vector2 force;
 
                 // Velocity
-                force = Vector2Add(cloth.positions[i][j], Vector2Subtract(cloth.positions[i][j], temp[i][j]));
+                force = Vector2Subtract(cloth.positions[i][j], temp[i][j]);
 
                 // Gravity
                 force = Vector2Add(force, (Vector2) {.x = 0, .y = 9.81 * GetFrameTime() * GetFrameTime()});
@@ -209,9 +209,9 @@ static void UpdateCloth() {
                             i + y < cloth.N
                         ) {
                             if (abs(x) + abs(y) == 2) { // Diagonal Points
-                                /*Vector2 offset = Vector2Subtract(force, temp[i + y][j + x]);
+                                Vector2 offset = Vector2Subtract(force, temp[i + y][j + x]);
 
-                                force = Vector2Add(force, Vector2Subtract(Vector2Scale(offset, -cloth.k * 0.7071), Vector2Scale(offset, cloth.c * 0.7071)));*/
+                                force = Vector2Add(force, Vector2Subtract(Vector2Scale(offset, -cloth.k * 0.7071), Vector2Scale(offset, cloth.c * 0.7071)));
                             } else if (abs(x) + abs(y) == 1) { // Horizontal/Vertical Points
                                 Vector2 offset = Vector2Subtract(cloth.positions[i][j], temp[i + y][j + x]);
 
@@ -221,7 +221,7 @@ static void UpdateCloth() {
                     }
                 }
 
-                cloth.positions[i][j] = force;
+                cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], force);
             }
         }
     }
