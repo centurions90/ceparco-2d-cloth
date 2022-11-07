@@ -17,8 +17,8 @@ typedef struct cloth {
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
-static const int screenWidth = 1280;
-static const int screenHeight = 720;
+static const int screenWidth = 1920;
+static const int screenHeight = 1080;
 static Cloth cloth;
 static Vector2 spacing;
 static float drag;
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     if (argc >= 3) {
         drag = atof(argv[2]);
     } else {
-        drag = 0.01;
+        drag = 0.004 * N;
     }
 
     CreateCloth(N);
@@ -117,7 +117,7 @@ static void UpdateDrawFrame(void)
         }
     }
 
-    DrawFPS(10, 10);
+    DrawFPS(30, 30);
 
     EndDrawing();
     //----------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ static void UpdateDrawFrame(void)
 
 static void CreateCloth(int N) {
     Vector2 center = {screenWidth / 2, screenHeight / 2 - 100};
-    Vector2 offset = {500, 200};
+    Vector2 offset = {400, 400};
     spacing.x = ((1.0 / (N - 1) - 0.5) * 2) * offset.x - ((0 - 0.5) * 2) * offset.x;
     spacing.y = ((1.0 / (N - 1) - 0.5) * 2) * offset.y - ((0 - 0.5) * 2) * offset.y;
 
@@ -167,6 +167,8 @@ static void UpdateCloth() {
             if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
                 Vector2 mousePos = GetMousePosition();
                 Vector2 mouseDelta = GetMouseDelta();
+                mouseDelta = Vector2Scale(mouseDelta, 2);
+                mouseDelta = Vector2ClampValue(mouseDelta, -spacing.x, spacing.x);
 
                 float distance = Vector2Distance(mousePos, cloth.positions[i][j]);
 
@@ -186,7 +188,7 @@ static void UpdateCloth() {
                 newPos = Vector2Add(cloth.positions[i][j], Vector2Scale(Vector2Subtract(cloth.positions[i][j], cloth.lastPositions[i][j]), 1.0 - drag));
 
                 // Gravity
-                newPos = Vector2Add(newPos, (Vector2) { .x = 0, .y = 981 * (1.0 - drag) * GetFrameTime() * GetFrameTime() });
+                newPos = Vector2Add(newPos, (Vector2) { .x = 0, .y = 981 * (1.0 - drag) * 0.02 * 0.02 });
 
                 cloth.lastPositions[i][j] = cloth.positions[i][j];
                 cloth.positions[i][j] = newPos;
@@ -196,60 +198,94 @@ static void UpdateCloth() {
 
     for (int i = 0; i < cloth.N; i++) {
         for (int j = 0; j < cloth.N; j++) {
-            
             // Cloth
-            if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
-                for (int y = -1; y <= 1; y++) {
-                    for (int x = -1; x <= 1; x++) {
-                        if (
-                            j + x >= 0 &&
-                            j + x < cloth.N &&
-                            i + y >= 0 &&
-                            i + y < cloth.N
-                            ) {
-                            // Diagonal Points
-                            //if (abs(x) + abs(y) == 2) {
-                            //    
-                            //}
+            int x = 1;
+            int y = 0;
+                
+            while (x >= 0 && y <= 1) {
+                if (
+                    !isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x)) &&
+                    j + x < cloth.N &&
+                    i + y < cloth.N
+                ) {
+                    Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
+                    float dist = Vector2Length(diff);
+                    float diffFactor;
 
-                            // Horizontal/Vertical Points
-                            if (abs(x) + abs(y) == 1) {
-                                if (y != 0) {
-                                    Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
-                                    float dist = Vector2Length(diff);
-                                    float diffFactor = (spacing.y - dist) / dist;
+                    if (y == 0) {
+                        diffFactor = (spacing.x - dist) / dist;
+                    } else {
+                        diffFactor = (spacing.y - dist) / dist;
+                    }
 
-                                    Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
+                    Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
 
-                                    cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
+                    cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
 
-                                    if (!isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x))) {
-                                        cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
-                                    }
-                                    else {
-                                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-                                    }
-                                } else {
-                                    Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
-                                    float dist = Vector2Length(diff);
-                                    float diffFactor = (spacing.x - dist) / dist;
-
-                                    Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
-
-                                    cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-
-                                    if (!isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x))) {
-                                        cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
-                                    }
-                                    else {
-                                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-                                    }
-                                }
-                            }
-                        }
+                    if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
+                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
+                    } else {
+                        cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
                     }
                 }
+
+                x--;
+                y++;
             }
+
+            //// Cloth
+            //if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
+            //    for (int y = -1; y <= 1; y++) {
+            //        for (int x = -1; x <= 1; x++) {
+            //            if (
+            //                j + x >= 0 &&
+            //                j + x < cloth.N &&
+            //                i + y >= 0 &&
+            //                i + y < cloth.N
+            //                ) {
+            //                // Diagonal Points
+            //                //if (abs(x) + abs(y) == 2) {
+            //                //    
+            //                //}
+
+            //                // Horizontal/Vertical Points
+            //                if (abs(x) + abs(y) == 1) {
+            //                    if (y != 0) {
+            //                        Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
+            //                        float dist = Vector2Length(diff);
+            //                        float diffFactor = (spacing.y - dist) / dist;
+
+            //                        Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
+
+            //                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
+
+            //                        if (!isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x))) {
+            //                            cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
+            //                        }
+            //                        else {
+            //                            cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
+            //                        }
+            //                    } else {
+            //                        Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
+            //                        float dist = Vector2Length(diff);
+            //                        float diffFactor = (spacing.x - dist) / dist;
+
+            //                        Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
+
+            //                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
+
+            //                        if (!isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x))) {
+            //                            cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
+            //                        }
+            //                        else {
+            //                            cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
         }
     }
 }
