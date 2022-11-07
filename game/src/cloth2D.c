@@ -27,8 +27,8 @@ static float drag;
 // Local Functions Declaration
 //----------------------------------------------------------------------------------
 
-static void UpdateDrawFrame(void);                      // Update and draw one frame
-static void CreateCloth(int N); // Create cloth with an NxN resolution
+static void UpdateDrawFrame(void);  // Update and draw one frame
+static void CreateCloth(int N);     // Create cloth with an NxN resolution
 static void UpdateCloth();
 static bool isPinned(int* list, int count, int index);
 
@@ -136,27 +136,18 @@ static void CreateCloth(int N) {
     }
     cloth.pinnedCount = N;
     cloth.positions = (Vector2**)malloc(N * sizeof(Vector2*));
+    cloth.lastPositions = (Vector2**)malloc(N * sizeof(Vector2*));
 
     for (int i = 0; i < N; i++) {
         cloth.positions[i] = (Vector2*)malloc(N * sizeof(Vector2));
+        cloth.lastPositions[i] = (Vector2*)malloc(N * sizeof(Vector2));
 
         for (int j = 0; j < N; j++) {
             cloth.positions[i][j] = (Vector2){
                 .x = center.x + (((float)j / (N - 1) - 0.5) * 2) * offset.x,
                 .y = center.y + (((float)i / (N - 1) - 0.5) * 2) * offset.y
             };
-        }
-    }
-
-    cloth.lastPositions = (Vector2**)malloc(N * sizeof(Vector2*));
-    for (int i = 0; i < N; i++) {
-        cloth.lastPositions[i] = (Vector2*)malloc(N * sizeof(Vector2));
-
-        for (int j = 0; j < N; j++) {
-            cloth.lastPositions[i][j] = (Vector2) {
-                .x = center.x + ((((float)j / (N - 1)) - 0.5) * 2) * offset.x,
-                .y = center.y + ((((float)i / (N - 1)) - 0.5) * 2) * offset.y
-            };
+            cloth.lastPositions[i][j] = cloth.positions[i][j];
         }
     }
 }
@@ -232,60 +223,6 @@ static void UpdateCloth() {
                 x--;
                 y++;
             }
-
-            //// Cloth
-            //if (!isPinned(cloth.pinned, cloth.pinnedCount, i * cloth.N + j)) {
-            //    for (int y = -1; y <= 1; y++) {
-            //        for (int x = -1; x <= 1; x++) {
-            //            if (
-            //                j + x >= 0 &&
-            //                j + x < cloth.N &&
-            //                i + y >= 0 &&
-            //                i + y < cloth.N
-            //                ) {
-            //                // Diagonal Points
-            //                //if (abs(x) + abs(y) == 2) {
-            //                //    
-            //                //}
-
-            //                // Horizontal/Vertical Points
-            //                if (abs(x) + abs(y) == 1) {
-            //                    if (y != 0) {
-            //                        Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
-            //                        float dist = Vector2Length(diff);
-            //                        float diffFactor = (spacing.y - dist) / dist;
-
-            //                        Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
-
-            //                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-
-            //                        if (!isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x))) {
-            //                            cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
-            //                        }
-            //                        else {
-            //                            cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-            //                        }
-            //                    } else {
-            //                        Vector2 diff = Vector2Subtract(cloth.positions[i][j], cloth.positions[i + y][j + x]);
-            //                        float dist = Vector2Length(diff);
-            //                        float diffFactor = (spacing.x - dist) / dist;
-
-            //                        Vector2 offset = Vector2Scale(diff, diffFactor * 0.5);
-
-            //                        cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-
-            //                        if (!isPinned(cloth.pinned, cloth.pinnedCount, (i + y) * cloth.N + (j + x))) {
-            //                            cloth.positions[i + y][j + x] = Vector2Subtract(cloth.positions[i + y][j + x], offset);
-            //                        }
-            //                        else {
-            //                            cloth.positions[i][j] = Vector2Add(cloth.positions[i][j], offset);
-            //                        }
-            //                    }
-            //                }
-            //            }
-            //        }
-            //    }
-            //}
         }
     }
 }
