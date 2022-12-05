@@ -1,12 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "game-premake-main", "_build\game-premake-main.vcxproj", "{8390F4A5-EFA6-F23B-381E-7E5DA473C3C3}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32929.385
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cloth2D", "_build\game-premake-main.vcxproj", "{8390F4A5-EFA6-F23B-381E-7E5DA473C3C3}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8898EA18-743A-15EF-5DF5-284349369C3F} = {8898EA18-743A-15EF-5DF5-284349369C3F}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "raylib", "_build\raylib.vcxproj", "{8898EA18-743A-15EF-5DF5-284349369C3F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cloth2Dcuda", "cloth2Dcuda\cloth2Dcuda.vcxproj", "{9BD462AA-95FE-4089-A17B-10C76C755C09}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8898EA18-743A-15EF-5DF5-284349369C3F} = {8898EA18-743A-15EF-5DF5-284349369C3F}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,8 +39,19 @@ Global
 		{8898EA18-743A-15EF-5DF5-284349369C3F}.Release|Win32.Build.0 = Release|Win32
 		{8898EA18-743A-15EF-5DF5-284349369C3F}.Release|x64.ActiveCfg = Release|x64
 		{8898EA18-743A-15EF-5DF5-284349369C3F}.Release|x64.Build.0 = Release|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Debug|Win32.ActiveCfg = Debug|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Debug|Win32.Build.0 = Debug|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Debug|x64.ActiveCfg = Debug|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Debug|x64.Build.0 = Debug|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Release|Win32.ActiveCfg = Release|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Release|Win32.Build.0 = Release|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Release|x64.ActiveCfg = Release|x64
+		{9BD462AA-95FE-4089-A17B-10C76C755C09}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AB710222-C04D-4DD5-B08A-05632AA2036B}
 	EndGlobalSection
 EndGlobal
