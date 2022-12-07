@@ -2,6 +2,12 @@
 #include "raylib.h"
 #include "raymath.h"
 
+#if defined(PLATFORM_DESKTOP)
+#define GLSL_VERSION            330
+#else   // PLATFORM_RPI, PLATFORM_ANDROID, PLATFORM_WEB
+#define GLSL_VERSION            100
+#endif
+
 //----------------------------------------------------------------------------------
 // Variables Definition
 //----------------------------------------------------------------------------------
@@ -17,6 +23,9 @@ static int* pinned;
 static float spacing;
 static int iterations = 6;
 static float gravity = 9.81f * 1.0f / 60.0f;
+
+static Texture2D texture;
+static Shader shader;
 
 //----------------------------------------------------------------------------------
 // Functions Declaration
@@ -85,7 +94,7 @@ static void UpdateDrawFrame(void)
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-            DrawCircle(x[index], y[index], 3.0f, RED);
+            //DrawCircle(x[index], y[index], 3.0f, RED);
 
             if (j + 1 < N)
             {
