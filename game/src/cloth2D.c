@@ -24,9 +24,6 @@ static float spacing;
 static int iterations = 6;
 static float gravity = 9.81f * 1.0f / 60.0f;
 
-static Texture2D texture;
-static Shader shader;
-
 //----------------------------------------------------------------------------------
 // Functions Declaration
 //----------------------------------------------------------------------------------
