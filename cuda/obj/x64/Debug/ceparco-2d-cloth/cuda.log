@@ -1,0 +1,4 @@
+﻿  Performing Custom Build Tools
+  cloth2D.cu
+     Creating library C:\Users\chris\Downloads\ceparco-2d-cloth\_bin\Debug\ceparco-2d-cloth-cuda.lib and object C:\Users\chris\Downloads\ceparco-2d-cloth\_bin\Debug\ceparco-2d-cloth-cuda.exp
+C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(247,5): warning MSB8065: Custom build for item "cloth2D.cu" succeeded, but specified output "c:\users\chris\downloads\ceparco-2d-cloth\cuda\ceparco-2d-cloth-cuda" has not been created. This may cause incremental build to work incorrectly.

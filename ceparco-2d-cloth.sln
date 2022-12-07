@@ -1,12 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33122.133
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ceparco-2d-cloth", "_build\ceparco-2d-cloth.vcxproj", "{4CC82121-38C1-4073-61F3-25F84D4B207F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8898EA18-743A-15EF-5DF5-284349369C3F} = {8898EA18-743A-15EF-5DF5-284349369C3F}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "raylib", "_build\raylib.vcxproj", "{8898EA18-743A-15EF-5DF5-284349369C3F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda", "cuda\cuda.vcxproj", "{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8898EA18-743A-15EF-5DF5-284349369C3F} = {8898EA18-743A-15EF-5DF5-284349369C3F}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,8 +39,19 @@ Global
 		{8898EA18-743A-15EF-5DF5-284349369C3F}.Release|Win32.Build.0 = Release|Win32
 		{8898EA18-743A-15EF-5DF5-284349369C3F}.Release|x64.ActiveCfg = Release|x64
 		{8898EA18-743A-15EF-5DF5-284349369C3F}.Release|x64.Build.0 = Release|x64
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Debug|Win32.Build.0 = Debug|Win32
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Debug|x64.ActiveCfg = Debug|x64
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Debug|x64.Build.0 = Debug|x64
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Release|Win32.ActiveCfg = Release|Win32
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Release|Win32.Build.0 = Release|Win32
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Release|x64.ActiveCfg = Release|x64
+		{4D3945C9-3759-4615-8EA3-A70F1D63F6B7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {01F70B03-9C46-4398-8E98-A1B2233139C7}
 	EndGlobalSection
 EndGlobal

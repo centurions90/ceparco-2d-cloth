@@ -1,0 +1,2 @@
+^C:\USERS\CHRIS\DOWNLOADS\CEPARCO-2D-CLOTH\CUDA\CLOTH2D.CU
+nvcc cloth2D.cu -o C:\Users\chris\Downloads\ceparco-2d-cloth\_bin\Debug\ceparco-2d-cloth-cuda -I C:\Users\chris\Downloads\ceparco-2d-cloth\raylib-master\src
