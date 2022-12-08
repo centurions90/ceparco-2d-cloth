@@ -1,7 +1,6 @@
 ﻿#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -22,6 +21,7 @@ static int* pinned;
 static float spacing;
 static int iterations = 6;
 static float gravity = 9.81f * 1.0f / 60.0f;
+static int numThreads = 256;
 
 //----------------------------------------------------------------------------------
 // Functions Declaration
@@ -31,7 +31,6 @@ static void UpdateDrawFrame(void);  // Update and draw one frame
 static void CreateCloth(int N);     // Create cloth with an NxN resolution
 static void FreeCloth(int N);       // Frees cloth from memory
 static void UpdateCloth();          // Update cloth physics
-static void LinkConstraint(int p1, int p2);
 
 //----------------------------------------------------------------------------------
 // Main entry point
@@ -119,11 +118,11 @@ static void CreateCloth(int N)
     float originY = 150.0f;
     spacing = 1.0 / N * size;
 
-    x       = (float*)malloc(N * N * sizeof(float));
-    y       = (float*)malloc(N * N * sizeof(float));
-    prevx   = (float*)malloc(N * N * sizeof(float));
-    prevy   = (float*)malloc(N * N * sizeof(float));
-    pinned  = (int*)malloc(N * N * sizeof(int));
+    cudaMallocManaged(&x, N * N * sizeof(float));
+    cudaMallocManaged(&y, N * N * sizeof(float));
+    cudaMallocManaged(&prevx, N * N * sizeof(float));
+    cudaMallocManaged(&prevy, N * N * sizeof(float));
+    cudaMallocManaged(&pinned, N * N * sizeof(int));
 
     for (int i = 0; i < N; i++)
     {
@@ -156,122 +155,117 @@ static void FreeCloth(int N)
     free(pinned);
 }
 
-__global__ void getGravity(int N, float* y, int* pinned, float gravity) {
-    int i = threadIdx.x;
-    int j = threadIdx.y;       
-
-    if (i < N && j < N) {
-        int index = i * N + j;
-        
-        if (!pinned[index])
+__global__ void SetGravity(int N, float* y, int* pinned, float gravity)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = index; i < N; i += stride)
+    {
+        if (!pinned[i])
         {
-            y[index] = y[index] + gravity;
+            y[i] = y[i] + gravity;
         }
     }
 }
 
-__global__ void getLinkContraint(int N, int iterations, float* x, float* y, float* prevx, float* prevy, int* pinned, float spacing) {
-    int i = threadIdx.x;
-    int j = threadIdx.y;
-    int k = threadIdx.z;
+__global__ void SetLinkContraint(int N, float* x, float* y, float* prevx, float* prevy, int* pinned, float spacing)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = index; i < N; i += stride)
+    {
+        int side = N / N;
 
-    if (k < iterations && i < N && j < N) {
-        int index = i * N + j;
-
-        if (j + 1 < N) {
-            float diffX = x[index] - x[index + 1];
-            float diffY = y[index] - y[index + 1];
+        if (i % side + 1 < N / N)
+        {
+            float diffX = x[i] - x[i + 1];
+            float diffY = y[i] - y[i + 1];
             float d = sqrtf(diffX * diffX + diffY * diffY);
             float difference = (spacing - d) / d;
             float translateX = diffX * 0.5 * difference;
             float translateY = diffY * 0.5 * difference;
-            x[index] += translateX;
-            y[index] += translateY;
-            x[index + 1] -= translateX;
-            y[index + 1] -= translateY;
+            x[i] += translateX;
+            y[i] += translateY;
+            x[i + 1] -= translateX;
+            y[i + 1] -= translateY;
         }
 
-        if (i + 1 < N) {
-            float diffX = x[index] - x[index + N];
-            float diffY = y[index] - y[index + N];
+        if (i + side < N)
+        {
+            float diffX = x[i] - x[i + side];
+            float diffY = y[i] - y[i + side];
             float d = sqrtf(diffX * diffX + diffY * diffY);
             float difference = (spacing - d) / d;
             float translateX = diffX * 0.5 * difference;
             float translateY = diffY * 0.5 * difference;
-            x[index] += translateX;
-            y[index] += translateY;
-            x[index + 1] -= translateX;
-            y[index + 1] -= translateY;
+            x[i] += translateX;
+            y[i] += translateY;
+            x[i + side] -= translateX;
+            y[i + side] -= translateY;
         }
 
-        if (pinned[index]) {
-            x[index] = prevx[index];
-            y[index] = prevy[index];
+        __syncthreads();
+
+        if (pinned[i])
+        {
+            x[i] = prevx[i];
+            y[i] = prevy[i];
         }
+    }
+}
+
+__global__ void SetVelocity(int N, float* x, float* y, float* prevx, float* prevy, int mouseX, int mouseY, int mouseDeltaX, int mouseDeltaY)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = index; i < N; i += stride)
+    {
+        float mouseFinalX = 0.0f;
+        float mouseFinalY = 0.0f;
+
+        float diffX = x[i] - mouseX;
+        float diffY = y[i] - mouseY;
+
+        if (diffX * diffX + diffY * diffY < 200.0f)
+        {
+            mouseFinalX = mouseDeltaX;
+            mouseFinalY = mouseDeltaY;
+        }
+
+        float tempx;
+        float tempy;
+
+        tempx = x[i];
+        tempy = y[i];
+
+        x[i] += x[i] - prevx[i] + mouseFinalX;
+        y[i] += y[i] - prevy[i] + mouseFinalY;
+
+        prevx[i] = tempx;
+        prevy[i] = tempy;
     }
 }
 
 static void UpdateCloth()
-{
-    dim3 threadsPerBlock(N, N);
-    
+{   
+    int numBlocks = (N * N + numThreads - 1) / numThreads;
+
     // Gravity
-    getGravity <<<1, threadsPerBlock >>> (N, y, pinned, gravity);
-    
-    dim3 iteration_size(iterations);
-    // Velocity
-    getLinkContraint <<<iteration_size, threadsPerBlock>>> (N, iterations, x, y, prevx, prevy, pinned, spacing);
-    
+    SetGravity <<<numBlocks, numThreads>>> (N * N, y, pinned, gravity);
     cudaDeviceSynchronize();
 
-    for (int i = 0; i < N; i++)
+    // Link Constraint
+    for (int i = 0; i < iterations; i++)
     {
-        for (int j = 0; j < N; j++)
-        {
-            int index = i * N + j;
-            float mouseX = 0.0f;
-            float mouseY = 0.0f;
-
-            float diffX = x[index] - GetMouseX();
-            float diffY = y[index] - GetMouseY();
-            if (diffX * diffX + diffY * diffY < 200.0f)
-            {
-                mouseX = GetMouseDelta().x;
-                mouseY = GetMouseDelta().y;
-            }
-
-            float tempx;
-            float tempy;
-
-            tempx = x[index];
-            tempy = y[index];
-
-            x[index] += x[index] - prevx[index] + mouseX;
-            y[index] += y[index] - prevy[index] + mouseY;
-
-            prevx[index] = tempx;
-            prevy[index] = tempy;
-        }
+        SetLinkContraint <<<numBlocks, numThreads>>> (N * N, x, y, prevx, prevy, pinned, spacing);
+        cudaDeviceSynchronize();
     }
-}
 
-//static void LinkConstraint(int p1, int p2)
-//{
-//    // calculate the distance
-//    float diffX = x[p1] - x[p2];
-//    float diffY = y[p1] - y[p2];
-//    float d = sqrtf(diffX * diffX + diffY * diffY);
-//
-//    // difference scalar
-//    float difference = (spacing - d) / d;
-//
-//    // translation for each PointMass. They'll be pushed 1/2 the required distance to match their resting distances.
-//    float translateX = diffX * 0.5 * difference;
-//    float translateY = diffY * 0.5 * difference;
-//
-//    x[p1] += translateX;
-//    y[p1] += translateY;
-//
-//    x[p2] -= translateX;
-//    y[p2] -= translateY;
-//}
+    // Velocity
+    int mouseX = GetMouseX();
+    int mouseY = GetMouseY();
+    int mouseDeltaX = GetMouseDelta().x;
+    int mouseDeltaY = GetMouseDelta().y;
+    SetVelocity <<<numBlocks, numThreads>>> (N * N, x, y, prevx, prevy, mouseX, mouseY, mouseDeltaX, mouseDeltaY);
+    cudaDeviceSynchronize();
+}

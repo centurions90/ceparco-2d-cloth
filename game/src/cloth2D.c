@@ -167,7 +167,7 @@ static void UpdateCloth()
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-            printf("GPU - i = %d, j = %d, index = %d \n", i, j, index);
+            
             if (!pinned[index])
             {
                 y[index] = y[index] + gravity;
