@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 #include "raylib.h"
 #include "raymath.h"
 
@@ -17,6 +19,7 @@ static int* pinned;
 static float spacing;
 static int iterations = 6;
 static float gravity = 9.81f * 1.0f / 60.0f;
+static double totalTime = 0;
 
 //----------------------------------------------------------------------------------
 // Functions Declaration
@@ -46,13 +49,19 @@ int main(int argc, char* argv[])
 
     CreateCloth(N);
 
-    // Load global data (assets that must be available in all screens, i.e. font)
-    //--------------------------------------------------------------------------------------
+    clock_t start, end;
+    double timeTaken;
+    int count = 0;
 
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
+        start = clock();
         UpdateCloth();
+        end = clock();
+        timeTaken = (double)(end - start) * 1e6 / CLOCKS_PER_SEC;
+        totalTime += timeTaken;
+        count++;
         UpdateDrawFrame();
     }
 
@@ -60,10 +69,10 @@ int main(int argc, char* argv[])
     //--------------------------------------------------------------------------------------
     FreeCloth(N);
 
-    // Unload global data loaded
-
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
+
+    printf("Average physics execution time took %f microseconds", totalTime / count);
 
     return 0;
 }
