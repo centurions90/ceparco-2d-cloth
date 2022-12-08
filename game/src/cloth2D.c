@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
-
+    printf("--------------------------------------------\n");
     printf("Average physics execution time took %f microseconds", totalTime / count);
 
     return 0;
@@ -167,7 +167,7 @@ static void UpdateCloth()
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-
+            printf("GPU - i = %d, j = %d, index = %d \n", i, j, index);
             if (!pinned[index])
             {
                 y[index] = y[index] + gravity;
@@ -204,7 +204,6 @@ static void UpdateCloth()
     }
 
     // Velocity
-
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)

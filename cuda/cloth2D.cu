@@ -1,6 +1,8 @@
 ﻿#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include "../raylib-master/src/raylib.h"
@@ -154,51 +156,73 @@ static void FreeCloth(int N)
     free(pinned);
 }
 
+__global__ void getGravity(int N, float* y, int* pinned, float gravity) {
+    int i = threadIdx.x;
+    int j = threadIdx.y;       
+
+    if (i < N && j < N) {
+        int index = i * N + j;
+        
+        if (!pinned[index])
+        {
+            y[index] = y[index] + gravity;
+        }
+    }
+}
+
+__global__ void getLinkContraint(int N, int iterations, float* x, float* y, float* prevx, float* prevy, int* pinned, float spacing) {
+    int i = threadIdx.x;
+    int j = threadIdx.y;
+    int k = threadIdx.z;
+
+    if (k < iterations && i < N && j < N) {
+        int index = i * N + j;
+
+        if (j + 1 < N) {
+            float diffX = x[index] - x[index + 1];
+            float diffY = y[index] - y[index + 1];
+            float d = sqrtf(diffX * diffX + diffY * diffY);
+            float difference = (spacing - d) / d;
+            float translateX = diffX * 0.5 * difference;
+            float translateY = diffY * 0.5 * difference;
+            x[index] += translateX;
+            y[index] += translateY;
+            x[index + 1] -= translateX;
+            y[index + 1] -= translateY;
+        }
+
+        if (i + 1 < N) {
+            float diffX = x[index] - x[index + N];
+            float diffY = y[index] - y[index + N];
+            float d = sqrtf(diffX * diffX + diffY * diffY);
+            float difference = (spacing - d) / d;
+            float translateX = diffX * 0.5 * difference;
+            float translateY = diffY * 0.5 * difference;
+            x[index] += translateX;
+            y[index] += translateY;
+            x[index + 1] -= translateX;
+            y[index + 1] -= translateY;
+        }
+
+        if (pinned[index]) {
+            x[index] = prevx[index];
+            y[index] = prevy[index];
+        }
+    }
+}
+
 static void UpdateCloth()
 {
+    dim3 threadsPerBlock(N, N);
+    
     // Gravity
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < N; j++)
-        {
-            int index = i * N + j;
-
-            if (!pinned[index])
-            {
-                y[index] = y[index] + gravity;
-            }
-        }
-    }
-
-    // Link Constraint
-    for (int k = 0; k < iterations; k++)
-    {
-        for (int i = 0; i < N; i++)
-        {
-            for (int j = 0; j < N; j++)
-            {
-                int index = i * N + j;
-
-                if (j + 1 < N)
-                {
-                    LinkConstraint(index, index + 1);
-                }
-
-                if (i + 1 < N)
-                {
-                    LinkConstraint(index, index + N);
-                }
-
-                if (pinned[index])
-                {
-                    x[index] = prevx[index];
-                    y[index] = prevy[index];
-                }
-            }
-        }
-    }
-
+    getGravity <<<1, threadsPerBlock >>> (N, y, pinned, gravity);
+    
+    dim3 iteration_size(iterations);
     // Velocity
+    getLinkContraint <<<iteration_size, threadsPerBlock>>> (N, iterations, x, y, prevx, prevy, pinned, spacing);
+    
+    cudaDeviceSynchronize();
 
     for (int i = 0; i < N; i++)
     {
@@ -231,23 +255,23 @@ static void UpdateCloth()
     }
 }
 
-static void LinkConstraint(int p1, int p2)
-{
-    // calculate the distance
-    float diffX = x[p1] - x[p2];
-    float diffY = y[p1] - y[p2];
-    float d = sqrtf(diffX * diffX + diffY * diffY);
-
-    // difference scalar
-    float difference = (spacing - d) / d;
-
-    // translation for each PointMass. They'll be pushed 1/2 the required distance to match their resting distances.
-    float translateX = diffX * 0.5 * difference;
-    float translateY = diffY * 0.5 * difference;
-
-    x[p1] += translateX;
-    y[p1] += translateY;
-
-    x[p2] -= translateX;
-    y[p2] -= translateY;
-}
+//static void LinkConstraint(int p1, int p2)
+//{
+//    // calculate the distance
+//    float diffX = x[p1] - x[p2];
+//    float diffY = y[p1] - y[p2];
+//    float d = sqrtf(diffX * diffX + diffY * diffY);
+//
+//    // difference scalar
+//    float difference = (spacing - d) / d;
+//
+//    // translation for each PointMass. They'll be pushed 1/2 the required distance to match their resting distances.
+//    float translateX = diffX * 0.5 * difference;
+//    float translateY = diffY * 0.5 * difference;
+//
+//    x[p1] += translateX;
+//    y[p1] += translateY;
+//
+//    x[p2] -= translateX;
+//    y[p2] -= translateY;
+//}
