@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
     printf("--------------------------------------------\n");
-    printf("Average physics execution time took %f microseconds", totalTime / count);
+    printf("Average physics execution time took %f microseconds\n", totalTime / count);
 
     return 0;
 }

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "../raylib-master/src/raylib.h"
 
 //----------------------------------------------------------------------------------
@@ -21,6 +22,7 @@ static int* pinned;
 static float spacing;
 static int iterations = 6;
 static float gravity = 9.81f * 1.0f / 60.0f;
+static double totalTime = 0;
 static int numThreads = 256;
 
 //----------------------------------------------------------------------------------
@@ -51,13 +53,22 @@ int main(int argc, char* argv[])
 
     CreateCloth(N);
 
+    clock_t start, end;
+    double timeTaken;
+    int count = 0;
+
     // Load global data (assets that must be available in all screens, i.e. font)
     //--------------------------------------------------------------------------------------
 
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
+        start = clock();
         UpdateCloth();
+        end = clock();
+        timeTaken = (double)(end - start) * 1e6 / CLOCKS_PER_SEC;
+        totalTime += timeTaken;
+        count++;
         UpdateDrawFrame();
     }
 
@@ -69,6 +80,8 @@ int main(int argc, char* argv[])
 
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
+    printf("--------------------------------------------\n");
+    printf("Average physics execution time took %f microseconds\n", totalTime / count);
 
     return 0;
 }
@@ -148,11 +161,11 @@ static void CreateCloth(int N)
 
 static void FreeCloth(int N)
 {
-    free(x);
-    free(y);
-    free(prevx);
-    free(prevy);
-    free(pinned);
+    cudaFree(x);
+    cudaFree(y);
+    cudaFree(prevx);
+    cudaFree(prevy);
+    cudaFree(pinned);
 }
 
 __global__ void SetGravity(int N, float* y, int* pinned, float gravity)
@@ -174,9 +187,9 @@ __global__ void SetLinkContraint(int N, float* x, float* y, float* prevx, float*
     int stride = blockDim.x * gridDim.x;
     for (int i = index; i < N; i += stride)
     {
-        int side = N / N;
-
-        if (i % side + 1 < N / N)
+        int side = sqrtf(N);
+        
+        if (i % side != side - 1)
         {
             float diffX = x[i] - x[i + 1];
             float diffY = y[i] - y[i + 1];
@@ -190,7 +203,7 @@ __global__ void SetLinkContraint(int N, float* x, float* y, float* prevx, float*
             y[i + 1] -= translateY;
         }
 
-        if (i + side < N)
+        if (i < N - side)
         {
             float diffX = x[i] - x[i + side];
             float diffY = y[i] - y[i + side];
