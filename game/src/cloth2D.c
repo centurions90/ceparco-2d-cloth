@@ -17,7 +17,7 @@ static float* prevx;
 static float* prevy;
 static int* pinned;
 static float spacing;
-static int iterations = 6;
+static int iterations = 30;
 static float gravity = 9.81f * 1.0f / 60.0f;
 static double totalTime = 0;
 
