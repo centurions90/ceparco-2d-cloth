@@ -108,7 +108,6 @@ static void UpdateDrawFrame(void)
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-            //DrawCircle(x[index], y[index], 3.0f, RED);
 
             if (j + 1 < N)
             {
@@ -190,7 +189,6 @@ static void UpdateCloth()
     }
 
     // Link Constraint
-    //int max = (int)fmaxf(hIterations, vIterations);
 
     for (int k = 0; k < hIterations; k++)
     {
