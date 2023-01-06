@@ -13,7 +13,7 @@ static int N;                           // Cloth resolution
 static float size = 10.0f;
 static float spacing;
 static int iterations;
-static float gravity = 9.81f * 1.0f / 60.0f;
+static float gravity = 1.0f / 60.0f;
 static double totalTime = 0;
 
 typedef struct Cloth
@@ -36,7 +36,7 @@ static void UpdateDrawFrame(Camera* camera, Model* cloth);  // Update and draw o
 static Cloth CreateCloth(int N);                            // Create cloth with an NxN resolution
 static Mesh GenClothMesh(Cloth* cloth);                     // Create mesh to render cloth
 static void UpdateClothMesh(Mesh* mesh, Cloth* cloth);      // Update cloth mesh to match data
-static void UpdateCloth(Cloth* cloth);                      // Update cloth physics
+static void UpdateCloth(Cloth* cloth, Camera* camera);                      // Update cloth physics
 static void LinkConstraint(Cloth* cloth, int p1, int p2);
 
 //----------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
         start = clock();
-        UpdateCloth(&cloth);
+        UpdateCloth(&cloth, &camera);
         end = clock();
         timeTaken = (double)(end - start) * 1e6 / CLOCKS_PER_SEC;
         totalTime += timeTaken;
@@ -116,7 +116,6 @@ static void UpdateDrawFrame(Camera* camera, Model* cloth)
     BeginMode3D(*camera);
 
     DrawModelWires(*cloth, Vector3Zero(), 1.0f, RED);
-    //DrawCubeWires(Vector3Zero(), 1.0f, 1.0f, 1.0f, WHITE);
 
     EndMode3D();
 
@@ -247,46 +246,40 @@ static void UpdateClothMesh(Mesh* mesh, Cloth* cloth)
     {
         for (int j = 0; j < N - 1; j++)
         {
-            int index = i * (N - 1) + j;
+            int index1 = i * (N - 1) + j;
+            int index2 = i * (N - 1) + j + (N - 1) * (N - 1);
             int vertex = i * (N - 1) + j + i;
 
-            mesh->vertices[index * 9] = cloth->vertices[vertex].x;
-            mesh->vertices[index * 9 + 1] = cloth->vertices[vertex].y;
-            mesh->vertices[index * 9 + 2] = cloth->vertices[vertex].z;
+            mesh->vertices[index1 * 9] = cloth->vertices[vertex].x;
+            mesh->vertices[index1 * 9 + 1] = cloth->vertices[vertex].y;
+            mesh->vertices[index1 * 9 + 2] = cloth->vertices[vertex].z;
 
-            mesh->vertices[index * 9 + 3] = cloth->vertices[vertex + N].x;
-            mesh->vertices[index * 9 + 4] = cloth->vertices[vertex + N].y;
-            mesh->vertices[index * 9 + 5] = cloth->vertices[vertex + N].z;
+            mesh->vertices[index1 * 9 + 3] = cloth->vertices[vertex + N].x;
+            mesh->vertices[index1 * 9 + 4] = cloth->vertices[vertex + N].y;
+            mesh->vertices[index1 * 9 + 5] = cloth->vertices[vertex + N].z;
 
-            mesh->vertices[index * 9 + 6] = cloth->vertices[vertex + 1].x;
-            mesh->vertices[index * 9 + 7] = cloth->vertices[vertex + 1].y;
-            mesh->vertices[index * 9 + 8] = cloth->vertices[vertex + 1].z;
+            mesh->vertices[index1 * 9 + 6] = cloth->vertices[vertex + 1].x;
+            mesh->vertices[index1 * 9 + 7] = cloth->vertices[vertex + 1].y;
+            mesh->vertices[index1 * 9 + 8] = cloth->vertices[vertex + 1].z;
+
+            mesh->vertices[index2 * 9] = cloth->vertices[vertex + N].x;
+            mesh->vertices[index2 * 9 + 1] = cloth->vertices[vertex + N].y;
+            mesh->vertices[index2 * 9 + 2] = cloth->vertices[vertex + N].z;
+
+            mesh->vertices[index2 * 9 + 3] = cloth->vertices[vertex + N + 1].x;
+            mesh->vertices[index2 * 9 + 4] = cloth->vertices[vertex + N + 1].y;
+            mesh->vertices[index2 * 9 + 5] = cloth->vertices[vertex + N + 1].z;
+
+            mesh->vertices[index2 * 9 + 6] = cloth->vertices[vertex + 1].x;
+            mesh->vertices[index2 * 9 + 7] = cloth->vertices[vertex + 1].y;
+            mesh->vertices[index2 * 9 + 8] = cloth->vertices[vertex + 1].z;
         }
     }
 
-    for (int i = 0; i < N - 1; i++)
-    {
-        for (int j = 0; j < N - 1; j++)
-        {
-            int index = i * (N - 1) + j + (N - 1) * (N - 1);
-            int vertex = i * (N - 1) + j + i;
-
-            mesh->vertices[index * 9] = cloth->vertices[vertex + N].x;
-            mesh->vertices[index * 9 + 1] = cloth->vertices[vertex + N].y;
-            mesh->vertices[index * 9 + 2] = cloth->vertices[vertex + N].z;
-
-            mesh->vertices[index * 9 + 3] = cloth->vertices[vertex + N + 1].x;
-            mesh->vertices[index * 9 + 4] = cloth->vertices[vertex + N + 1].y;
-            mesh->vertices[index * 9 + 5] = cloth->vertices[vertex + N + 1].z;
-
-            mesh->vertices[index * 9 + 6] = cloth->vertices[vertex + 1].x;
-            mesh->vertices[index * 9 + 7] = cloth->vertices[vertex + 1].y;
-            mesh->vertices[index * 9 + 8] = cloth->vertices[vertex + 1].z;
-        }
-    }
+    UpdateMeshBuffer(*mesh, 0, mesh->vertices, sizeof(float) * mesh->vertexCount * 3, 0);
 }
 
-static void UpdateCloth(Cloth* cloth)
+static void UpdateCloth(Cloth* cloth, Camera* camera)
 {
     // Gravity
     for (int i = 0; i < N; i++)
@@ -295,9 +288,9 @@ static void UpdateCloth(Cloth* cloth)
         {
             int index = i * N + j;
             
-            if (index < N)
+            if (index >= N)
             {
-                cloth->vertices[index].y += gravity;
+                cloth->vertices[index].y -= gravity;
             }
         }
     }
@@ -330,28 +323,39 @@ static void UpdateCloth(Cloth* cloth)
     }
 
     // Velocity
+    Vector3 w0 = (Vector3){ -size, -size, 0.0f };
+    Vector3 w1 = (Vector3){ -size, size, 0.0f };
+    Vector3 w2 = (Vector3){ size, size, 0.0f };
+    Vector3 w3 = (Vector3){ size, -size, 0.0f };
+
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-            Vector3 mouse = { 0.0f, 0.0f, 0.0f };
 
-            Vector3 diff =
-            {
-                cloth->vertices[index].x - GetMouseX(),
-                cloth->vertices[index].y - GetMouseY(),
-                0.0f
-            };
+            Ray ray = GetMouseRay(GetMousePosition(), *camera);
 
-            if (Vector3Length(diff) < 200.0f)
+            RayCollision wallHitInfo = GetRayCollisionQuad(ray, w0, w1, w2, w3);
+
+            Vector3 mouse = wallHitInfo.point;
+
+            Vector3 diff = Vector3Subtract(cloth->vertices[index], mouse);
+
+            if (Vector3Length(diff) < 0.5f)
             {
                 mouse = (Vector3)
                 {
-                    GetMouseDelta().x,
+                    -GetMouseDelta().x,
                     GetMouseDelta().y,
                     0
                 };
+
+                mouse = Vector3Scale(mouse, 0.01f);
+            }
+            else
+            {
+                mouse = Vector3Zero();
             }
 
             Vector3 temp;
