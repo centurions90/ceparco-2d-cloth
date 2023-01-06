@@ -17,7 +17,8 @@ static float* prevx;
 static float* prevy;
 static int* pinned;
 static float spacing;
-static int iterations = 30;
+static int hIterations = 30;
+static int vIterations = 30;
 static float gravity = 9.81f * 1.0f / 60.0f;
 static double totalTime = 0;
 
@@ -41,10 +42,23 @@ int main(int argc, char* argv[])
     InitWindow(screenWidth, screenHeight, "2D Cloth Simulation");
     SetTargetFPS(60);
 
-    if (argc >= 2) {
+    if (argc >= 2)
+    {
         N = atof(argv[1]);
-    } else {
+    }
+    else
+    {
         N = 10;
+    }
+
+    if (argc >= 3)
+    {
+        hIterations = atoi(argv[2]);
+    }
+
+    if (argc >= 4)
+    {
+        vIterations = atoi(argv[3]);
     }
 
     CreateCloth(N);
@@ -122,11 +136,11 @@ static void CreateCloth(int N)
     float originY = 150.0f;
     spacing = 1.0 / N * size;
 
-    x       = malloc(N * N * sizeof(float));
-    y       = malloc(N * N * sizeof(float));
-    prevx   = malloc(N * N * sizeof(float));
-    prevy   = malloc(N * N * sizeof(float));
-    pinned  = malloc(N * N * sizeof(int));
+    x = malloc(N * N * sizeof(float));
+    y = malloc(N * N * sizeof(float));
+    prevx = malloc(N * N * sizeof(float));
+    prevy = malloc(N * N * sizeof(float));
+    pinned = malloc(N * N * sizeof(int));
 
     for (int i = 0; i < N; i++)
     {
@@ -167,7 +181,7 @@ static void UpdateCloth()
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-            
+
             if (!pinned[index])
             {
                 y[index] = y[index] + gravity;
@@ -176,7 +190,9 @@ static void UpdateCloth()
     }
 
     // Link Constraint
-    for (int k = 0; k < iterations; k++)
+    //int max = (int)fmaxf(hIterations, vIterations);
+
+    for (int k = 0; k < hIterations; k++)
     {
         for (int i = 0; i < N; i++)
         {
@@ -188,6 +204,23 @@ static void UpdateCloth()
                 {
                     LinkConstraint(index, index + 1);
                 }
+
+                if (pinned[index])
+                {
+                    x[index] = prevx[index];
+                    y[index] = prevy[index];
+                }
+            }
+        }
+    }
+
+    for (int k = 0; k < vIterations; k++)
+    {
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                int index = i * N + j;
 
                 if (i + 1 < N)
                 {
