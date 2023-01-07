@@ -96,6 +96,8 @@ static void UpdateDrawFrame(void)
 
     ClearBackground(BLACK);
 
+    cudaDeviceSynchronize();
+
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++)
@@ -278,7 +280,7 @@ static void UpdateCloth()
 
     // Gravity
     SetGravity <<<numBlocks, numThreads>>> (N * N, y, pinned, gravity);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 
     // Link Constraint
     int max = fmaxf(hIterations, vIterations);
@@ -299,7 +301,7 @@ static void UpdateCloth()
             v++;
         }
 
-        cudaDeviceSynchronize();
+        //cudaDeviceSynchronize();
         ResetPinned <<<numBlocks, numThreads >> > (N, x, y, prevx, prevy, pinned);
     }
 
@@ -309,5 +311,5 @@ static void UpdateCloth()
     float mouseDeltaX = GetMouseDelta().x;
     float mouseDeltaY = GetMouseDelta().y;
     SetVelocity <<<numBlocks, numThreads>>> (N * N, x, y, prevx, prevy, mouseX, mouseY, mouseDeltaX, mouseDeltaY);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 }
