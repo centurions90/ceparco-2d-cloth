@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>
 #include "../raylib-master/src/raylib.h"
 
 //----------------------------------------------------------------------------------
@@ -20,9 +19,9 @@ static float* prevx;
 static float* prevy;
 static int* pinned;
 static float spacing;
-static int iterations = 30;
+static int hIterations = 30;
+static int vIterations = 30;
 static float gravity = 9.81f * 1.0f / 60.0f;
-static double totalTime = 0;
 static int numThreads = 256;
 
 //----------------------------------------------------------------------------------
@@ -45,17 +44,23 @@ int main(int argc, char* argv[])
     SetTargetFPS(60);
 
     if (argc >= 2) {
-        N = atof(argv[1]);
+        N = atoi(argv[1]);
     }
     else {
         N = 10;
     }
 
-    CreateCloth(N);
+    if (argc >= 3)
+    {
+        hIterations = atoi(argv[2]);
+    }
 
-    clock_t start, end;
-    double timeTaken;
-    int count = 0;
+    if (argc >= 4)
+    {
+        vIterations = atoi(argv[3]);
+    }
+
+    CreateCloth(N);
 
     // Load global data (assets that must be available in all screens, i.e. font)
     //--------------------------------------------------------------------------------------
@@ -63,12 +68,7 @@ int main(int argc, char* argv[])
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
-        start = clock();
         UpdateCloth();
-        end = clock();
-        timeTaken = (double)(end - start) * 1e6 / CLOCKS_PER_SEC;
-        totalTime += timeTaken;
-        count++;
         UpdateDrawFrame();
     }
 
@@ -80,8 +80,6 @@ int main(int argc, char* argv[])
 
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
-    printf("--------------------------------------------\n");
-    printf("Average physics execution time took %f microseconds\n", totalTime / count);
 
     return 0;
 }
@@ -103,7 +101,6 @@ static void UpdateDrawFrame(void)
         for (int j = 0; j < N; j++)
         {
             int index = i * N + j;
-            //DrawCircle(x[index], y[index], 3.0f, RED);
 
             if (j + 1 < N)
             {
@@ -129,7 +126,7 @@ static void CreateCloth(int N)
 {
     float originX = screenWidth / 2.0f - size / 2.0f;
     float originY = 150.0f;
-    spacing = 1.0 / N * size;
+    spacing = 1.0f / N * size;
 
     cudaMallocManaged(&x, N * N * sizeof(float));
     cudaMallocManaged(&y, N * N * sizeof(float));
@@ -181,7 +178,7 @@ __global__ void SetGravity(int N, float* y, int* pinned, float gravity)
     }
 }
 
-__global__ void SetLinkContraint(int N, float* x, float* y, float* prevx, float* prevy, int* pinned, float spacing)
+__global__ void SetLinkContraintH(int N, float* x, float* y, float* prevx, float* prevy, float spacing)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
@@ -202,6 +199,16 @@ __global__ void SetLinkContraint(int N, float* x, float* y, float* prevx, float*
             x[i + 1] -= translateX;
             y[i + 1] -= translateY;
         }
+    }
+}
+
+__global__ void SetLinkContraintV(int N, float* x, float* y, float* prevx, float* prevy, float spacing)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = index; i < N; i += stride)
+    {
+        int side = sqrtf(N);
 
         if (i < N - side)
         {
@@ -216,18 +223,10 @@ __global__ void SetLinkContraint(int N, float* x, float* y, float* prevx, float*
             x[i + side] -= translateX;
             y[i + side] -= translateY;
         }
-
-        __syncthreads();
-
-        if (pinned[i])
-        {
-            x[i] = prevx[i];
-            y[i] = prevy[i];
-        }
     }
 }
 
-__global__ void SetVelocity(int N, float* x, float* y, float* prevx, float* prevy, int mouseX, int mouseY, int mouseDeltaX, int mouseDeltaY)
+__global__ void SetVelocity(int N, float* x, float* y, float* prevx, float* prevy, int mouseX, int mouseY, float mouseDeltaX, float mouseDeltaY)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
@@ -259,6 +258,20 @@ __global__ void SetVelocity(int N, float* x, float* y, float* prevx, float* prev
     }
 }
 
+__global__ void ResetPinned(int N, float* x, float* y, float* prevx, float* prevy, int* pinned)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = index; i < N; i += stride)
+    {
+        if (pinned[i])
+        {
+            x[i] = prevx[i];
+            y[i] = prevy[i];
+        }
+    }
+}
+
 static void UpdateCloth()
 {   
     int numBlocks = (N * N + numThreads - 1) / numThreads;
@@ -268,17 +281,33 @@ static void UpdateCloth()
     cudaDeviceSynchronize();
 
     // Link Constraint
-    for (int i = 0; i < iterations; i++)
+    int max = fmaxf(hIterations, vIterations);
+    int h = 0;
+    int v = 0;
+
+    for (int i = 0; i < max; i++)
     {
-        SetLinkContraint <<<numBlocks, numThreads>>> (N * N, x, y, prevx, prevy, pinned, spacing);
+        if (h < hIterations)
+        {
+            SetLinkContraintH << <numBlocks, numThreads >> > (N * N, x, y, prevx, prevy, spacing);
+            h++;
+        }
+        
+        if (v < vIterations)
+        {
+            SetLinkContraintV << <numBlocks, numThreads >> > (N * N, x, y, prevx, prevy, spacing);
+            v++;
+        }
+
         cudaDeviceSynchronize();
+        ResetPinned <<<numBlocks, numThreads >> > (N, x, y, prevx, prevy, pinned);
     }
 
     // Velocity
     int mouseX = GetMouseX();
     int mouseY = GetMouseY();
-    int mouseDeltaX = GetMouseDelta().x;
-    int mouseDeltaY = GetMouseDelta().y;
+    float mouseDeltaX = GetMouseDelta().x;
+    float mouseDeltaY = GetMouseDelta().y;
     SetVelocity <<<numBlocks, numThreads>>> (N * N, x, y, prevx, prevy, mouseX, mouseY, mouseDeltaX, mouseDeltaY);
     cudaDeviceSynchronize();
 }
